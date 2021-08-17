@@ -1,11 +1,17 @@
 #===================================Pramble====================================#
 #Program Description: 
-#1) 
+#1) First computes a list of files from the initial location given, using the 
+#   ecsv_files function. 
+#2) This list is then cycled through using the colour_indices_compare function.
+#   This function saves a figure to the destination location given for each of 
+#   files in the file_paths array. If this can't be done an error will be recorded.
+#3) After this is complete, if there are any errors they will be displayed in the
+#   terminal.
 
 #Inputs: 1) -l <location for data files>  
 #        2) -d <destination for figures>
 
-#Packages: pip install os argparse pdb numpy astropy matplotlib
+#Packages: pip install os argparse logging pdb numpy astropy matplotlib
 
 #Run: python3 comparison.py -l <location for data files> -d <destination for figures>
 
@@ -24,7 +30,6 @@ import numpy as np
 from astropy.table import Table, Column
 from astropy.time import Time
 import matplotlib.pyplot as plt
-#from mpl_toolkit.axes_grid1 import host_subplot
 #import datetime
 
 #Local Modules
@@ -32,7 +37,7 @@ import matplotlib.pyplot as plt
 #import photutils
 
 #Importing files
-import fire_light_curve
+#import fire_light_curve
 
 #==============================Function Definition=============================#
 
@@ -114,7 +119,17 @@ def colour_indices_compare(input_file, destination):
     plt.subplots_adjust(wspace=0.6)
     fig.set_size_inches(15,5)
     fig.savefig(destination+table.meta['event_codename']+'_'+table.meta['location']+'.png', dpi=200)
-    
+'''
+#This needs to be implemented in fire_light_curve.py
+#Renames files to allow for easy collation
+def rename_file(path, file_path):
+    #Open file to pull info for new name
+    table = Table.read(input_file, format='ascii.ecsv', guess=False, delimiter=',')
+    codename = table.meta['event_codename']
+    location = table.meta['location']
+    #Copies file and give new file name
+    os.rename(path, file_path+codename+location+'.ecsv')
+'''
 #==========================Plotting the Comparisons============================#
 
 #Setting the logger
@@ -135,7 +150,6 @@ file_paths = ecsv_files(cur_location)
 #Error counters
 fails = 0
 error_type = []
-#new_location = '../Figures/15_2015-11-13_172458_DSC_1506-G_DN151113_03_2018-01-02_175311_patrick_nocomment.ecsv'
 
 #Making the graphs
 for path in file_paths:

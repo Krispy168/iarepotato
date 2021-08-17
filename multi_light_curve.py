@@ -1,11 +1,18 @@
 #===================================Pramble====================================#
 #Program Description: 
-#1) Searches through desired directory running fire_light_curve.py on targets
+#1) Program first computes a list of file paths where the initial data can be found,
+#   this calls the multi_curves function and cycles through the directory given.
+#2) It uses the file_paths array to attempt to compute the fire_light_curve.py 
+#   program. This produces a plot of magnitudes and the B-R colour-index, as well 
+#   as an updated copy of the data used, and places them in the specified location.
+#3) Depending if this can be done, this program produces 4 files with the locations
+#   of files that have either passed or failed (and their reason for doing so).
+#4) Then closes all open files and prints pass and fail numbers to terminal.
 
 #Inputs: 1) -f <location for initial data> 
 #        2) -d <destination for figures and processed data files>
 
-#Packages: pip install os argparse pdb numpy astropy datetime
+#Packages: pip install os argparse logging pdb numpy astropy datetime
 
 #Run: python3 multi_light_curve.py -f <location for initial data> -d <destination for figures and processed data files>
 
