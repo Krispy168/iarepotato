@@ -1,15 +1,20 @@
 #===================================Pramble====================================#
 #Program Description: 
-#1) 
+#1) Takes the input file locations to the obs_colab function 
+#2) This function finds the corresponding files and combines them into one
+#3) Also within this function the air mass correction for each filter is calculated
+#   and added to the new file 
+#4) Renames the file and saves to the new location given
 
-#Inputs: 1) -l <location for data files>  
-#        2) -d <destination for figures>
+#Inputs: 1) -v <location for visual data files>  
+#        2) -t <location for triangulation files>
+#        3) -l <destination for new files>
 
-#Packages: pip install os argparse pdb numpy astropy matplotlib
+#Packages: pip install os argparse logging pdb numpy astropy matplotlib
 
-#Run: python3 event_colab.py -l <location for data files> -d <destination for figures>
+#Run: python3 event_colab.py -v <location for visual data files> -t <location for triangulation files> -l <destination for new files>
 
-#Outputs: 
+#Outputs: Combines and renames the files for each observation 
 #==============================Importing Packages==============================#
 
 #Import Reading and Error Modules
@@ -23,21 +28,46 @@ import numpy as np
 from astropy.table import Table, Column, hstack
 from astropy.time import Time
 import matplotlib.pyplot as plt
-#from mpl_toolkit.axes_grid1 import host_subplot
-#import datetime
-
-#Local Modules
-#import dfn_utils
-#import photutils
-
-#Importing files
-import fire_light_curve
 
 #==============================Function Definition=============================#
 
+#Calculating the zenith angle
+def zenith(alt):
+    #Convrting altitude to zenith and degrees to radians
+    zenith = (90-alt)*(np.pi/180)
+    return zenith
+    
 #Air mass correction
-def air_mass_correction():
+def air_mass_correction(alt, height):
     #This then needs to be different for each filter. 
+    #Defining constants and arrays for the function
+    rad_E = 6.371E+6 #Ave. Earth Radius (m)
+    zen = zenith(alt)
+    R_on_high = rad_E/height
+    high_on_R = height/rad_E
+    cozy = np.cos(zen)
+    #Calculating the correction
+    AM_correction = R_on_high*np.sqrt((cozy**2)+(2*(high_on_R))+(high_on_R**2))-R_on_high*cozy
+    return AM_correction
+    
+#Adding and populating new correction columns 
+def correction_add(table):
+    #Correction factor per air mass
+    CORRECTION_FACTOR = {'R': 0.1,
+                         'G': 0.1,
+                         'B': 0.1} #Change this for correct values
+    #Setting the arrays for calculation
+    alt = table['altitude']
+    height = table['height']
+    #Calculating the air mass correction
+    AM_correction = air_mass_correction(alt,height)
+    #Writing columns and data to file
+    for key in CORRECTION_FACTOR:
+        column_name = str(key+'_airmass_correct')
+        column_data = AM_correction*CORRECTION_FACTOR[key][0]
+        table.add_column(name=column_name, data=column_data, dtype='float64')
+    #Returns the new table columns and values
+    return table
 
 #Bringing observations together
 def obs_colab(visual, triangulation, save):
@@ -56,10 +86,12 @@ def obs_colab(visual, triangulation, save):
                 tot_table = hstack([vis_table,tri_table], join_type='exact')
             except Exception as e:
                 print(e)
+            #Adding the air mass corrections
+            correction_add(tot_table)
             #Setting the file name, and saving file.
             codename = tot_table.meta['event_codename']
             location = tot_table.meta['location']
-            fname = save+tot_table.meta['event_codename']+'_Attempt2_'+tot_table.meta['location']+'.ecsv'
+            fname = save+tot_table.meta['event_codename']+'_'+tot_table.meta['location']+'.ecsv'
             tot_table.write(fname, format='ascii.ecsv', delimiter=',', overwrite=True)
             #Message to terminal
             print("Table should be merged correctly, don't worry about those errors")

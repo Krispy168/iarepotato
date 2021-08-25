@@ -1,11 +1,20 @@
 #===================================Pramble====================================#
 #Program Description: 
-#1) 
+#1) Reads in the files to create a list of observations
+#2) For each observation it creates and saves a figure of the magnitudes for each 
+#   filter (RGB) and the colour-indices. 
+#3) Prints number of fails and error messages to terminal (shouldn't be any)
+
+#Note: A runtime warning appears when running this code, not sure why. See error below:
+#/home/krispy/anaconda3/lib/python3.7/site-packages/astropy/table/column.py:1020: RuntimeWarning: invalid value encountered in less
+#  result = getattr(super(), op)(other)
+#Note2: Global x-axis time would be great, need to figure out
+#Note3: Possibly play with the spacing between the plots
 
 #Inputs: 1) -l <location for data files>  
 #        2) -d <destination for figures>
 
-#Packages: pip install os argparse pdb numpy astropy matplotlib
+#Packages: pip install os argparse logging pdb numpy astropy matplotlib
 
 #Run: python3 comparison.py -l <location for data files> -d <destination for figures>
 
@@ -25,7 +34,7 @@ from astropy.table import Table, Column
 from astropy.time import Time
 import matplotlib.pyplot as plt
 
-#Importing files
+#Importing files (Not sure this is completely necessary)
 import fire_light_curve
 
 #==============================Function Definition=============================#
@@ -49,7 +58,7 @@ def colour_indices_compare(input_file, destination):
     #Setting the colour filters
     SPECTRAL_BAND_DE_BAYER = {'R': 'red', 'G': 'green', 'B': 'blue'}
     #Setting the different colour indices
-    C_INDICES = {'B-R': ['magenta','v'], 'B-G': ['aqua','*'], 'G-R': ['yellow','o']}
+    C_INDICES = {'B-R': ['cyan','s'], 'B-G': ['lime','D'], 'G-R': ['orangered','o']}
     #Calculating the x-axis
     ref_time = Time(table['datetime'][0])
     table['reltime'] = (Time(table['datetime']) - ref_time).sec
@@ -61,6 +70,7 @@ def colour_indices_compare(input_file, destination):
     for spectral_band in SPECTRAL_BAND_DE_BAYER:
         app_mag_colname = 'm_' + spectral_band
         saturation_colname = 'saturated_flag_' + spectral_band
+        snr_colname = 'SNR_' + spectral_band
         if not app_mag_colname in table.colnames:
             logger.warning(f'{spectral_band} not available for plotting')
             continue
@@ -69,20 +79,19 @@ def colour_indices_compare(input_file, destination):
         n_tot = np.count_nonzero(~np.isnan(table[saturation_colname]))
         n_sat = np.nansum(table[saturation_colname][sat_mask])
         n_non_sat = n_tot - n_sat
-        '''
-        #Let's try a value of about 10 to start with
-        #Marking the low signal to noise points 
-        snr_mask = (
-        
-        
-        '''
-        #Plot unsaturated and saturated records with different flags
+        #Marking the low SNR points 
+        low_snr = (table[snr_colname] < 25)
+        #Plot unsaturated data points
         ax1.scatter(table['reltime'][~sat_mask], table[app_mag_colname][~sat_mask],
                 label=f'{spectral_band} n={n_non_sat:.0f}',
                 color=spectral_band.lower())
+        #Plot saturated data points
         ax1.scatter(table['reltime'][sat_mask], table[app_mag_colname][sat_mask],
                 label=f'{spectral_band} saturated n={n_sat:.0f}',
                 marker='x', color=spectral_band.lower())
+        #Plot low SNR points 
+        ax1.scatter(table['reltime'][low_snr], table[app_mag_colname][low_snr],
+                marker='.', color='white', s=75) 
     #Setting the colour-indices plot
     for c_index in C_INDICES:
         c_index_colname = 'colour_index_' + c_index
@@ -95,7 +104,8 @@ def colour_indices_compare(input_file, destination):
     
     #Setting global figure options
     fig.suptitle(table.meta['event_codename']+'_'+table.meta['location']+' Magnitude and Colour-Indices Comparison')
-    #Would love a global xaxis header here but is not working
+    #Dirty way to note that unfilled circles are low SNR
+    ax1.scatter([],[],marker='.',color='white',label='Unfilled point is Low SNR')
     #Sub-figure 1 magnitude comparison plot
     ax1.invert_yaxis()
     ax1.set_xlabel('Time (s)')
@@ -140,13 +150,14 @@ error_type = []
 
 #Making the graphs
 for path in file_paths:
-    #pdb.set_trace()
     try:
         colour_indices_compare(path, sav_location)
         print('Comparison figure saved')
     except Exception as e:
         error_type.append(e)
         fails += 1
+    #Uncomment for debugging and graph experiments
+    #pdb.set_trace()
 
 #Printing errors to terminal
 if fails > 0:
