@@ -927,6 +927,9 @@ def main_disk_io(ifile, plot=False, destination=None):
         
     # if a different destination is specified
     if destination:
+        #codename = table.meta['event_codename']
+        #location = table.meta['location']
+        #ofile = os.path.join(destination, codename+location+'.ecsv')
         ofile = os.path.join(destination, os.path.basename(ifile))
     else:
         # else overwrite the input file
